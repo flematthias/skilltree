@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compétences FPA</title>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+        .animate-slideIn {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Configuration Grist
+        const GRIST_DOC_ID = '8FFQqM3gUKSs';
+        const TABLE_ID = 'Competencesmissions';
+        const GRIST_API_URL = `https://grist.numerique.gouv.fr/api/docs/${GRIST_DOC_ID}/tables/${TABLE_ID}/records`;
+
+        const familyConfig = {
+            analyseur: {
+                name: "Analyseur",
+                color: "from-cyan-500 to-blue-600",
+                bgColor: "bg-cyan-500",
+                borderColor: "border-cyan-400",
+                glowColor: "shadow-cyan-500/50",
+                icon: "fa-brain"
+            },
+            concepteur: {
+                name: "Concepteur",
+                color: "from-purple-500 to-pink-600",
+                bgColor: "bg-purple-500",
+                borderColor: "border-purple-400",
+                glowColor: "shadow-purple-500/50",
+                icon: "fa-lightbulb"
+            },
+            veilleur: {
+                name: "Veilleur",
+                color: "from-green-500 to-emerald-600",
+                bgColor: "bg-green-500",
+                borderColor: "border-green-400",
+                glowColor: "shadow-green-500/50",
+                icon: "fa-binoculars"
+            },
+            evaluateur: {
+                name: "Evaluateur",
+                color: "from-orange-500 to-red-600",
+                bgColor: "bg-orange-500",
+                borderColor: "border-orange-400",
+                glowColor: "shadow-orange-500/50",
+                icon: "fa-crosshairs"
+            },
+            animateur: {
+                name: "Animateur",
+                color: "from-yellow-500 to-amber-600",
+                bgColor: "bg-yellow-500",
+                borderColor: "border-yellow-400",
+                glowColor: "shadow-yellow-500/50",
+                icon: "fa-users"
+            },
+            accompagnateur: {
+                name: "Accompagnateur",
+                color: "from-indigo-500 to-violet-600",
+                bgColor: "bg-indigo-500",
+                borderColor: "border-indigo-400",
+                glowColor: "shadow-indigo-500/50",
+                icon: "fa-hand-holding-heart"
+            }
+        };
+
+        const SkillNode = ({ skill, isActive, onClick, familyColor }) => {
+            return (
+                <div
+                    className="absolute cursor-pointer transition-all duration-300 group"
+                    style={{
+                        left: `${skill.position.x}%`,
+                        top: `${skill.position.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 10
+                    }}
+                    onClick={onClick}
+                >
+                    <div className={`absolute inset-0 bg-gradient-to-r ${familyColor} rounded-full blur-md opacity-0 group-hover:opacity-70 transition-opacity duration-300 ${isActive ? 'opacity-100 animate-pulse' : ''}`}></div>
+                    <div className={`relative w-24 h-24 rounded-full bg-gray-900 border-4 ${isActive ? 'border-white' : 'border-gray-600'} flex flex-col items-center transition-all duration-300 group-hover:border-white`}>
+                        <i className={`fas ${skill.icon} text-2xl text-white mt-2`}></i>
+                        <div className="text-white text-xs font-semibold text-center leading-tight px-0">
+                            {skill.titre}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ConnectionLines = ({ skills, familyColor }) => {
+            const connections = [];
+            
+            for (let i = 0; i < skills.length - 1; i++) {
+                for (let j = i + 1; j < skills.length; j++) {
+                    const skill1 = skills[i];
+                    const skill2 = skills[j];
+                    const distance = Math.sqrt(
+                        Math.pow(skill1.position.x - skill2.position.x, 2) + 
+                        Math.pow(skill1.position.y - skill2.position.y, 2)
+                    );
+                    
+                    if (distance < 50) {
+                        connections.push({ skill1, skill2 });
+                    }
+                }
+            }
+
+            return (
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
+                    {connections.map((conn, idx) => (
+                        <line
+                            key={idx}
+                            x1={`${conn.skill1.position.x}%`}
+                            y1={`${conn.skill1.position.y}%`}
+                            x2={`${conn.skill2.position.x}%`}
+                            y2={`${conn.skill2.position.y}%`}
+                            stroke="rgba(156, 163, 175, 0.3)"
+                            strokeWidth="2"
+                            className="animate-pulse"
+                        />
+                    ))}
+                </svg>
+            );
+        };
+
+        const SkillCard = ({ skill, family }) => {
+            if (!skill) {
+                return (
+                    <div className="w-96 h-full bg-gray-900 border-l-4 border-gray-700 p-8 flex items-center justify-center">
+                        <div className="text-center">
+                            <i className="fas fa-hand-pointer text-6xl text-gray-600 mb-4"></i>
+                            <p className="text-gray-400 text-lg">Cliquez sur une compétence pour voir les détails</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="w-96 h-full bg-gray-900 border-l-4 border-gray-700 p-8 overflow-y-auto">
+                    <div className="flex justify-between items-start mb-6">
+                        <div className={`p-4 rounded-lg bg-gradient-to-r ${family.color}`}>
+                            <i className={`fas ${skill.icon} text-4xl text-white`}></i>
+                        </div>
+                    </div>
+                    
+                    <div className="mb-6">
+                        <div className="text-sm text-gray-400 uppercase tracking-wide mb-2">{family.name}</div>
+                        <h2 className="text-3xl font-bold text-white mb-4">{skill.titre}</h2>
+                    </div>
+                    
+                    <div className="space-y-6">
+                        <div>
+                            <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${family.color} mb-3`}>
+                                Description
+                            </div>
+                            <p className="text-gray-300 leading-relaxed text-lg">{skill.description}</p>
+                        </div>
+                        
+                        {skill.mission && (
+                            <div>
+                                <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${family.color} mb-3`}>
+                                    Missions
+                                </div>
+                                <p className="text-gray-300 leading-relaxed text-lg">{skill.mission}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [skillsData, setSkillsData] = useState({});
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [selectedSkill, setSelectedSkill] = useState(null);
+
+            useEffect(() => {
+    const fetchData = async () => {
+        try {
+            const response = await fetch(GRIST_API_URL);
+            const data = await response.json();
+
+            const organized = {};
+
+            // Fonction de calcul de position en grille 4 colonnes
+            const computeGridPosition = (index) => {
+                const columns = [
+                    { x: 20, startY: 20 }, // gauche
+                    { x: 40, startY: 35 }, // centre 
+                    { x: 60, startY: 35 }, // centre 
+                    { x: 80, startY: 20 }  // droite
+                ];
+
+                const columnIndex = index % 4;
+                const rowIndex = Math.floor(index / 4);
+
+                const verticalGap = 35;
+
+                return {
+                    x: columns[columnIndex].x,
+                    y: columns[columnIndex].startY + rowIndex * verticalGap
+                };
+            };
+
+            data.records.forEach((record, index) => {
+                const familleKey = record.fields.famille.toLowerCase();
+
+                if (!organized[familleKey]) {
+                    organized[familleKey] = {
+                        ...familyConfig[familleKey],
+                        skills: []
+                    };
+                }
+
+                const skillIndex = organized[familleKey].skills.length;
+                const position = computeGridPosition(skillIndex);
+
+                organized[familleKey].skills.push({
+                    id: record.id,
+                    titre: record.fields.titre,
+                    description: record.fields.description,
+                    mission: record.fields.mission,
+                    icon: record.fields.icon || 'fa-solid fa-star',
+                    position
+                });
+            });
+
+            setSkillsData(organized);
+            setLoading(false);
+
+        } catch (err) {
+            console.error('Erreur lors de la récupération des données:', err);
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
+    fetchData();
+}, []);
+
+
+            if (loading) {
+                return (
+                    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+                        <div className="text-white text-2xl">
+                            <i className="fas fa-spinner fa-spin mr-3"></i>
+                            Chargement...
+                        </div>
+                    </div>
+                );
+            }
+
+            if (error) {
+                return (
+                    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+                        <div className="text-red-500 text-xl">
+                            <i className="fas fa-exclamation-triangle mr-3"></i>
+                            Erreur: {error}
+                        </div>
+                    </div>
+                );
+            }
+
+            const familyKeys = Object.keys(skillsData);
+            if (familyKeys.length === 0) {
+                return (
+                    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+                        <div className="text-gray-400 text-xl">Aucune donnée disponible</div>
+                    </div>
+                );
+            }
+
+            const getVisibleFamilies = () => {
+                const prev = currentIndex === 0 ? familyKeys.length - 1 : currentIndex - 1;
+                const next = currentIndex === familyKeys.length - 1 ? 0 : currentIndex + 1;
+                return [prev, currentIndex, next];
+            };
+
+            const goToPrevious = () => {
+                setCurrentIndex(currentIndex === 0 ? familyKeys.length - 1 : currentIndex - 1);
+                setSelectedSkill(null);
+            };
+
+            const goToNext = () => {
+                setCurrentIndex(currentIndex === familyKeys.length - 1 ? 0 : currentIndex + 1);
+                setSelectedSkill(null);
+            };
+
+            const [leftIndex, centerIndex, rightIndex] = getVisibleFamilies();
+            const leftFamily = skillsData[familyKeys[leftIndex]];
+            const centerFamily = skillsData[familyKeys[centerIndex]];
+            const rightFamily = skillsData[familyKeys[rightIndex]];
+
+            return (
+                <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden flex">
+                    <div className="flex-1 flex items-center justify-center" style={{ marginRight: '384px' }}>
+                        <div className="relative w-full h-full flex items-center justify-center p-8">
+                            <div className="text-center absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+                                <h1 className="text-5xl font-bold text-white mb-2">
+                                    <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
+                                        Vos compétences FPA
+                                    </span>
+                                </h1>
+                            </div>
+
+                            <button
+                                onClick={goToPrevious}
+                                className="absolute left-8 top-1/2 transform -translate-y-1/2 z-20 bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-full transition-all duration-300 hover:scale-110"
+                            >
+                                <i className="fas fa-chevron-left text-3xl"></i>
+                            </button>
+
+                            <button
+                                onClick={goToNext}
+                                className="absolute right-8 top-1/2 transform -translate-y-1/2 z-20 bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-full transition-all duration-300 hover:scale-110"
+                            >
+                                <i className="fas fa-chevron-right text-3xl"></i>
+                            </button>
+
+                            <div className="relative flex items-center justify-center w-full h-full">
+                                <div className="absolute left-0 w-1/5 h-2/3 opacity-40 transition-all duration-500" style={{ top: '50%', transform: 'translateY(-50%)' }}>
+                                    <div className={`absolute inset-0 bg-gradient-to-r ${leftFamily.color} rounded-3xl blur-2xl opacity-20`}></div>
+                                    <div className="relative w-full h-full bg-gray-900/50 border-2 border-gray-700 rounded-3xl px-2 py-8">
+                                        <div className="text-center">
+                                            <i className={`fas ${leftFamily.icon} text-4xl text-gray-500 mb-2`}></i>
+                                            <h2 className="text-1xl font-bold text-gray-500">{leftFamily.name}</h2>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="relative w-3/5 h-4/5 z-10 transition-all duration-500">
+                                    <div className={`absolute inset-0 bg-gradient-to-r ${centerFamily.color} rounded-3xl blur-3xl opacity-30 animate-pulse`}></div>
+                                    <div className={`relative w-full h-full bg-gray-900 border-4 ${centerFamily.borderColor} rounded-3xl ${centerFamily.glowColor} shadow-2xl`}>
+                                        <div className="text-center pt-8 pb-4" style={{ height: '120px' }}>
+                                            <i className={`fas ${centerFamily.icon} text-5xl text-white mb-3`}></i>
+                                            <h2 className="text-3xl font-bold text-white">{centerFamily.name}</h2>
+                                        </div>
+                                        
+                                        <div className="relative w-full" style={{ height: 'calc(100% - 120px)' }}>
+                                            <ConnectionLines skills={centerFamily.skills} familyColor={centerFamily.color} />
+                                            {centerFamily.skills.map((skill) => (
+                                                <SkillNode
+                                                    key={skill.id}
+                                                    skill={skill}
+                                                    isActive={selectedSkill?.id === skill.id}
+                                                    onClick={() => setSelectedSkill({ ...skill, family: centerFamily })}
+                                                    familyColor={centerFamily.color}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="absolute right-0 w-1/5 h-2/3 opacity-40 transition-all duration-500" style={{ top: '50%', transform: 'translateY(-50%)' }}>
+                                    <div className={`absolute inset-0 bg-gradient-to-r ${rightFamily.color} rounded-3xl blur-2xl opacity-20`}></div>
+                                    <div className="relative w-full h-full bg-gray-900/50 border-2 border-gray-700 rounded-3xl px-2 py-8">
+                                        <div className="text-center">
+                                            <i className={`fas ${rightFamily.icon} text-4xl text-gray-500 mb-2`}></i>
+                                            <h2 className="text-1xl font-bold text-gray-500">{rightFamily.name}</h2>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="fixed right-0 top-0 h-full">
+                        <SkillCard
+                            skill={selectedSkill}
+                            family={selectedSkill?.family}
+                        />
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
